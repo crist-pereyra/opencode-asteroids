@@ -118,6 +118,50 @@ class Asteroid {
   }
 }
 
+class ShootingStar extends Asteroid {
+  constructor(x, y) {
+    super(x, y, 2);
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(210, 280);
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.radius = 14;
+    this.ttl = rand(7, 10);
+    this.points = 150;
+  }
+
+  update(dt) {
+    super.update(dt);
+    this.ttl -= dt;
+    if (this.ttl <= 0) this.dead = true;
+  }
+
+  split() {
+    return [];
+  }
+
+  draw() {
+    const speed = Math.hypot(this.vx, this.vy);
+    const directionX = this.vx / speed;
+    const directionY = this.vy / speed;
+    const alpha = Math.min(1, this.ttl);
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 240, 150, ${alpha.toFixed(2)})`;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x - directionX * 34, this.y - directionY * 34);
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ── Power-up de velocidad ─────────────────────────────────────────────────────
 class SpeedPowerUp {
   constructor(x, y) {
@@ -287,14 +331,22 @@ let speedPowerUpTimer;
 
 function spawnAsteroids(count) {
   const SAFE_DIST = 130;
-  for (let i = 0; i < count; i++) {
+  const spawnPosition = () => {
     let x, y;
     do {
       x = rand(0, W);
       y = rand(0, H);
     } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
+    return { x, y };
+  };
+
+  for (let i = 0; i < count; i++) {
+    const { x, y } = spawnPosition();
     asteroids.push(new Asteroid(x, y, 3));
   }
+
+  const { x, y } = spawnPosition();
+  asteroids.push(new ShootingStar(x, y));
 }
 
 function spawnSpeedPowerUp() {
@@ -399,7 +451,7 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        score += a.points ?? POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
       }
