@@ -29,6 +29,7 @@ Luego visita `http://localhost:3000`.
 | `←` `→`   | Rotar nave |
 | `↑`       | Propulsar  |
 | `Espacio` | Disparar   |
+| `C`       | Cambiar skin de la nave |
 
 ## Puntuación
 
@@ -44,3 +45,4 @@ Luego visita `http://localhost:3000`.
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
 - Power-up `Velocidad`: duplica la movilidad de la nave durante 5 segundos
+- 4 skins de nave con colores y formas diferentes, guardadas entre sesiones
