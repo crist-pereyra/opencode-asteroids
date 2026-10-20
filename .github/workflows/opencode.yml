@@ -26,5 +26,5 @@ jobs:
          env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
          with:
-          model: opencode-zen/big-pickle
+          model: opencode/big-pickle
           # github_token: xxxx
