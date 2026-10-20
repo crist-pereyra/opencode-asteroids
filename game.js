@@ -63,6 +63,16 @@ const SHIP_SKINS = [
     points: [[21, 0], [0, -14], [-16, 0], [0, 14]],
     flame: [[-5, -4], [-5, 4]],
   },
+  {
+    name: 'MORADA',
+    stroke: '#c77dff',
+    fill: 'rgba(199, 125, 255, 0.14)',
+    thrust: 'rgba(199, 125, 255, 0.9)',
+    points: [[20, 0], [-12, -9], [-7, 0], [-12, 9]],
+    flame: [[-8, -4], [-8, 4]],
+    scale: 2,
+    pointsMultiplier: 2,
+  },
 ];
 
 function loadSkinIndex() {
@@ -89,6 +99,14 @@ let selectedSkinIndex = loadSkinIndex();
 function cycleSkin() {
   selectedSkinIndex = (selectedSkinIndex + 1) % SHIP_SKINS.length;
   saveSkinIndex();
+}
+
+function skinScale() {
+  return SHIP_SKINS[selectedSkinIndex].scale ?? 1;
+}
+
+function skinPointsMultiplier() {
+  return SHIP_SKINS[selectedSkinIndex].pointsMultiplier ?? 1;
 }
 
 function drawPolygon(points) {
@@ -350,7 +368,7 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = 12 * skinScale();
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -362,6 +380,7 @@ class Ship {
 
   update(dt) {
     if (this.dead) return;
+    this.radius = 12 * skinScale();
     if (this.invincible    > 0) this.invincible    -= dt;
     if (this.shootCooldown > 0) this.shootCooldown -= dt;
     if (this.speedBoostTimer > 0) this.speedBoostTimer -= dt;
@@ -403,7 +422,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21 * skinScale();
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShotTimer <= 0) return [new Bullet(ox, oy, this.angle)];
@@ -427,6 +446,8 @@ class Ship {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     const skin = SHIP_SKINS[selectedSkinIndex];
+    const scale = skin.scale ?? 1;
+    ctx.scale(scale, scale);
     ctx.strokeStyle = skin.stroke;
     ctx.fillStyle    = skin.fill;
 
@@ -685,7 +706,7 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += a.points ?? POINTS[a.size];
+        score += (a.points ?? POINTS[a.size]) * skinPointsMultiplier();
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
       }
@@ -700,7 +721,7 @@ function update(dt) {
     for (const a of asteroids) {
       if (dist(ship, a) < 29 + a.radius * 0.82) {
         a.dead = true;
-        score += a.points ?? POINTS[a.size];
+        score += (a.points ?? POINTS[a.size]) * skinPointsMultiplier();
         explode(a.x, a.y, a.size * 5);
         shieldAsteroids.push(...a.split());
       }
@@ -750,7 +771,8 @@ function drawLifeIcon(x, y) {
   ctx.fillStyle = skin.fill;
   ctx.lineWidth   = 1.2;
   ctx.lineJoin    = 'round';
-  ctx.scale(0.45, 0.45);
+  const iconScale = 0.45 / (SHIP_SKINS[selectedSkinIndex].scale ?? 1);
+  ctx.scale(iconScale, iconScale);
   drawPolygon(skin.points);
   ctx.fill();
   ctx.stroke();
