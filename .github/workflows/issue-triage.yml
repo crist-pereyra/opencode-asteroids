@@ -1,0 +1,24 @@
+name: Triage new issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask OpenCode to triage the issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `/opencode\n\nTriage this newly opened issue. Preserve the issue author's original body exactly as written and append a clearly separated Markdown section with relevant review metadata. Apply appropriate labels, including needs-triage and a type label such as bug, feature, question, or documentation. Do not remove or rewrite the original content. Use the GitHub issue API or gh CLI to update the issue itself, not only this comment.`
+            });
