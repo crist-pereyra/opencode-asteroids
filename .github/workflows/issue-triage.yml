@@ -5,73 +5,76 @@ on:
     types: [opened]
 
 permissions:
+  contents: read
   issues: write
 
 jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - name: Update issue with triage metadata
-        uses: actions/github-script@v7
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          script: |
-            const issue = context.payload.issue;
-            const originalBody = issue.body ?? '';
-            const text = `${issue.title}\n${originalBody}`.toLowerCase();
+          fetch-depth: 1
+          persist-credentials: false
 
-            const type = text.includes('bug') || text.includes('error') || text.includes('fail')
-              ? 'bug'
-              : text.includes('feature') || text.includes('enhancement') || text.includes('request')
-                ? 'feature'
-                : text.includes('documentation') || text.includes('docs')
-                  ? 'documentation'
-                  : text.includes('question') || text.includes('how ') || text.includes('?')
-                    ? 'question'
-                    : 'question';
+      - name: Generate and apply issue triage
+        uses: anomalyco/opencode/github@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/big-pickle
+          use_github_token: true
+          prompt: |-
+            Eres el agente de triage del repositorio "03-asteroids", un clon de
+            Asteroids en JavaScript vanilla (sin dependencias, sin bundler, sin
+            build). Lee AGENTS.md y game.js antes de clasificar el issue.
 
-            const metadata = [
-              '',
-              '',
-              '---',
-              '',
-              '## Triage metadata',
-              '',
-              `- **Status:** needs-triage`,
-              `- **Type:** ${type}`,
-              `- **Opened by:** @${issue.user.login}`,
-              `- **Opened at:** ${issue.created_at}`,
-              ''
-            ].join('\n');
+            El issue actual es el evento que activó este workflow. Obtén su título,
+            cuerpo original y número usando el contexto del evento o la API de
+            GitHub.
 
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: originalBody + metadata
-            });
+            Tu tarea es clasificar el issue y reformatear su cuerpo. Genera un
+            objeto JSON con exactamente esta forma:
 
-            for (const label of ['needs-triage', type]) {
-              try {
-                await github.rest.issues.getLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  name: label
-                });
-              } catch (error) {
-                if (error.status !== 404) throw error;
-
-                await github.rest.issues.createLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  name: label,
-                  color: label === 'needs-triage' ? 'fbca04' : '1d76db'
-                });
-              }
+            {
+              "labels": ["<etiqueta1>", "<etiqueta2>"],
+              "body": "<nuevo cuerpo en markdown, en español>"
             }
 
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              labels: ['needs-triage', type]
-            });
+            Elige entre 1 y 2 etiquetas de este conjunto permitido:
+            bug, enhancement, question, documentation, needs-triage.
+            - bug: error, fallo o comportamiento incorrecto.
+            - enhancement: mejora o nueva funcionalidad.
+            - question: duda o pedido de ayuda.
+            - documentation: problema o mejora de documentación.
+            - needs-triage: issue ambiguo o no clasificable.
+            No inventes etiquetas. Si dudas, usa needs-triage.
+
+            El nuevo body debe contener, en este orden:
+            1. "## Resumen": resumen conciso del problema, en 1-3 oraciones.
+            2. "## Información relevante", con:
+               - área probable del código (por ejemplo, game.js: Ship o update);
+                 si no aplica, "N/A";
+               - severidad sugerida: baja, media o alta;
+               - pasos de reproducción esperados, o exactamente:
+                 "Falta información para determinar pasos de reproducción."
+            3. "## Descripción": contenido del usuario reformateado y normalizado.
+               Preserva los hechos, no inventes detalles y corrige solo el formato
+               Markdown.
+            4. Un separador exactamente: ---
+            5. La línea "_Texto original del issue_" y después el texto original
+               completo citado línea por línea con "> ". Debe conservarse
+               exactamente, sin modificar ni traducir.
+
+            No incluyas el título dentro del body. No inventes detalles técnicos.
+            El JSON puede generarse internamente o escribirse en un archivo
+            temporal para validarlo, pero no publiques texto adicional ni fences.
+
+            Finalmente, aplica el resultado al issue actual mediante la API de
+            GitHub o gh CLI: actualiza su body con el valor generado y aplica todas
+            las etiquetas de "labels". Crea las etiquetas si no existen. No te
+            limites a publicar un comentario. Verifica que el issue actualizado
+            conserva el texto original citado y que incluye needs-triage cuando
+            corresponda.
