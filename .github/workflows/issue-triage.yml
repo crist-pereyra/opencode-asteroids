@@ -11,14 +11,67 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - name: Ask OpenCode to triage the issue
+      - name: Update issue with triage metadata
         uses: actions/github-script@v7
         with:
           script: |
             const issue = context.payload.issue;
-            await github.rest.issues.createComment({
+            const originalBody = issue.body ?? '';
+            const text = `${issue.title}\n${originalBody}`.toLowerCase();
+
+            const type = text.includes('bug') || text.includes('error') || text.includes('fail')
+              ? 'bug'
+              : text.includes('feature') || text.includes('enhancement') || text.includes('request')
+                ? 'feature'
+                : text.includes('documentation') || text.includes('docs')
+                  ? 'documentation'
+                  : text.includes('question') || text.includes('how ') || text.includes('?')
+                    ? 'question'
+                    : 'question';
+
+            const metadata = [
+              '',
+              '',
+              '---',
+              '',
+              '## Triage metadata',
+              '',
+              `- **Status:** needs-triage`,
+              `- **Type:** ${type}`,
+              `- **Opened by:** @${issue.user.login}`,
+              `- **Opened at:** ${issue.created_at}`,
+              ''
+            ].join('\n');
+
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: `/opencode\n\nTriage this newly opened issue. Preserve the issue author's original body exactly as written and append a clearly separated Markdown section with relevant review metadata. Apply appropriate labels, including needs-triage and a type label such as bug, feature, question, or documentation. Do not remove or rewrite the original content. Use the GitHub issue API or gh CLI to update the issue itself, not only this comment.`
+              body: originalBody + metadata
+            });
+
+            for (const label of ['needs-triage', type]) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: label === 'needs-triage' ? 'fbca04' : '1d76db'
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: ['needs-triage', type]
             });
