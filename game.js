@@ -373,8 +373,11 @@ class Ship {
     this.invincible    = 3;
     this.shootCooldown = 0;
     this.speedBoostTimer = 0;
+    this.speedBoostDuration = 5;
     this.tripleShotTimer = 0;
+    this.tripleShotDuration = 5;
     this.shieldTimer = 0;
+    this.shieldDuration = 6;
     this.dead          = false;
   }
 
@@ -408,15 +411,15 @@ class Ship {
   }
 
   activateSpeedBoost() {
-    this.speedBoostTimer = 5;
+    this.speedBoostTimer = this.speedBoostDuration;
   }
 
   activateTripleShot() {
-    this.tripleShotTimer = 5;
+    this.tripleShotTimer = this.tripleShotDuration;
   }
 
   activateShield() {
-    this.shieldTimer = 6;
+    this.shieldTimer = this.shieldDuration;
   }
 
   tryShoot() {
@@ -779,6 +782,17 @@ function drawLifeIcon(x, y) {
   ctx.restore();
 }
 
+function drawPowerUpBar(x, y, width, ratio, color) {
+  const barHeight = 5;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.fillRect(x, y, width, barHeight);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, width * Math.max(0, Math.min(1, ratio)), barHeight);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, width - 1, barHeight - 1);
+}
+
 function drawHUD() {
   ctx.fillStyle = '#fff';
   ctx.font = '15px monospace';
@@ -786,17 +800,18 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fff';
   ctx.fillText(`SCORE  ${score}`, 14, 26);
-  if (ship.speedBoostTimer > 0)
-    ctx.fillStyle = '#4df3ff';
-  if (ship.speedBoostTimer > 0)
-    ctx.fillText(`VELOCIDAD  ${Math.ceil(ship.speedBoostTimer)}s`, 150, 26);
-  if (ship.tripleShotTimer > 0) {
-    ctx.fillStyle = '#ff72e6';
-    ctx.fillText(`TRIPLE SHOT  ${Math.ceil(ship.tripleShotTimer)}s`, 300, 26);
-  }
-  if (ship.shieldTimer > 0) {
-    ctx.fillStyle = '#b66cff';
-    ctx.fillText(`ESCUDO  ${Math.ceil(ship.shieldTimer)}s`, 440, 26);
+
+  const powerUps = [
+    { timer: ship.speedBoostTimer, duration: ship.speedBoostDuration, label: 'VELOCIDAD', color: '#4df3ff', x: 150 },
+    { timer: ship.tripleShotTimer, duration: ship.tripleShotDuration, label: 'TRIPLE SHOT', color: '#ff72e6', x: 300 },
+    { timer: ship.shieldTimer, duration: ship.shieldDuration, label: 'ESCUDO', color: '#b66cff', x: 440 },
+  ];
+
+  for (const pu of powerUps) {
+    if (pu.timer <= 0) continue;
+    ctx.fillStyle = pu.color;
+    ctx.fillText(`${pu.label}  ${Math.ceil(pu.timer)}s`, pu.x, 26);
+    drawPowerUpBar(pu.x, 31, 125, pu.timer / pu.duration, pu.color);
   }
 
   ctx.textAlign = 'center';
